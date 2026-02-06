@@ -210,8 +210,8 @@ export const DebtManagement = () => {
       {/* Filters */}
       <Card>
         <CardHeader>
-          <CardTitle>Filtros de BÃºsqueda</CardTitle>
-          <CardDescription>Utilice los filtros para encontrar deudas especÃ­ficas</CardDescription>
+          <CardTitle>Filtros de Busqueda</CardTitle>
+          <CardDescription>Utilice los filtros para encontrar deudas especificas</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
