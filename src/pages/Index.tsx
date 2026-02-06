@@ -170,9 +170,10 @@ const Index = () => {
                 <div className="relative rounded-[28px] p-[1px] bg-gradient-to-br from-primary/45 via-accent/35 to-transparent shadow-2xl">
                   <div className="relative overflow-hidden rounded-[27px] bg-card/80 backdrop-blur min-h-[280px] sm:min-h-[360px] lg:min-h-[520px]">
                     <img
+                      key={currentImage}
                       src={galleryImages[currentImage].src}
                       alt={galleryImages[currentImage].alt}
-                      className="h-full w-full object-cover aspect-[4/3] lg:aspect-[5/4]"
+                      className="h-full w-full object-cover aspect-[4/3] lg:aspect-[5/4] hero-fade-blur"
                       loading="lazy"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/0 to-transparent" />

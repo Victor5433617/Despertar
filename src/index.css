@@ -148,4 +148,21 @@ All colors MUST be HSL.
   .float-slower {
     animation: float-slower 13s ease-in-out infinite;
   }
+
+  @keyframes hero-fade-blur {
+    0% {
+      opacity: 0;
+      filter: blur(10px);
+      transform: scale(1.02);
+    }
+    100% {
+      opacity: 1;
+      filter: blur(0);
+      transform: scale(1);
+    }
+  }
+
+  .hero-fade-blur {
+    animation: hero-fade-blur 650ms ease-out;
+  }
 }
