@@ -339,7 +339,7 @@ const Index = () => {
               </span>
             </div>
             <p className="text-sm text-muted-foreground">
-               {new Date().getFullYear()} Escuela Despertar. Todos los derechos reservados.              reservados.
+               {new Date().getFullYear()} Escuela Despertar. Todos los derechos reservados.dasd              reservados.
             </p>
           </div>
         </div>
