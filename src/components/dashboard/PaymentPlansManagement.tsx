@@ -39,7 +39,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Search, Pencil, Trash2, Calculator, Eye, DollarSign, ClipboardList } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Calculator, Eye, DollarSign, ClipboardList, ChevronLeft, ChevronRight } from "lucide-react";
 import { format, addMonths } from "date-fns";
 import { es } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
@@ -75,12 +75,15 @@ interface Installment {
   paid_amount?: number;
 }
 
+const PAGE_SIZE = 10;
+
 export const PaymentPlansManagement = () => {
   const [plans, setPlans] = useState<PaymentPlan[]>([]);
   const [filteredPlans, setFilteredPlans] = useState<PaymentPlan[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
@@ -107,6 +110,17 @@ export const PaymentPlansManagement = () => {
   useEffect(() => {
     filterPlans();
   }, [searchTerm, plans]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(filteredPlans.length / PAGE_SIZE));
+    if (currentPage > maxPage) {
+      setCurrentPage(maxPage);
+    }
+  }, [filteredPlans.length, currentPage]);
 
   // Auto-calculate monthly payment when total and installments change
   useEffect(() => {
@@ -181,6 +195,9 @@ export const PaymentPlansManagement = () => {
 
     setFilteredPlans(filtered);
   };
+
+  const totalPages = Math.max(1, Math.ceil(filteredPlans.length / PAGE_SIZE));
+  const paginatedPlans = filteredPlans.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const resetForm = () => {
     setFormData({
@@ -391,6 +408,44 @@ export const PaymentPlansManagement = () => {
   const totalDebt = plans.reduce((sum, p) => sum + p.total_amount, 0);
   const totalPaid = plans.reduce((sum, p) => sum + (p.total_paid || 0), 0);
 
+  const renderPagination = () => {
+    if (filteredPlans.length === 0) return null;
+
+    const startItem = (currentPage - 1) * PAGE_SIZE + 1;
+    const endItem = Math.min(currentPage * PAGE_SIZE, filteredPlans.length);
+
+    return (
+      <div className="mt-4 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground">
+          Mostrando {startItem}-{endItem} de {filteredPlans.length} planes
+        </p>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="mr-1 h-4 w-4" />
+            Anterior
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            Página {currentPage} de {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+            disabled={currentPage >= totalPages}
+          >
+            Siguiente
+            <ChevronRight className="ml-1 h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -486,14 +541,14 @@ export const PaymentPlansManagement = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPlans.length === 0 ? (
+                {paginatedPlans.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       No hay planes de pago registrados
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredPlans.map((plan) => (
+                  paginatedPlans.map((plan) => (
                     <TableRow key={plan.id}>
                       <TableCell className="font-medium">
                         {plan.student
@@ -550,6 +605,7 @@ export const PaymentPlansManagement = () => {
               </TableBody>
             </Table>
           </div>
+          {renderPagination()}
         </CardContent>
       </Card>
 

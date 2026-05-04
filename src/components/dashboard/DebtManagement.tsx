@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Eye, DollarSign, AlertTriangle } from "lucide-react";
+import { Search, Eye, DollarSign, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { DebtDetailsDialog } from "./DebtDetailsDialog";
 import { formatDatePY, getTodayDateString } from "@/lib/dateUtils";
@@ -28,11 +28,14 @@ interface StudentDebt {
   pending_debts_count: number;
 }
 
+const PAGE_SIZE = 10;
+
 export const DebtManagement = () => {
   const [studentDebts, setStudentDebts] = useState<StudentDebt[]>([]);
   const [filteredDebts, setFilteredDebts] = useState<StudentDebt[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFilter, setDateFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -44,6 +47,17 @@ export const DebtManagement = () => {
   useEffect(() => {
     filterDebts();
   }, [searchTerm, dateFilter, studentDebts]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, dateFilter]);
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(filteredDebts.length / PAGE_SIZE));
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [filteredDebts.length, currentPage]);
 
   const loadStudentDebts = async () => {
     try {
@@ -147,6 +161,46 @@ export const DebtManagement = () => {
 
   const totalDebtAmount = filteredDebts.reduce((sum, debt) => sum + debt.total_debt, 0);
   const studentsWithDebt = filteredDebts.filter((debt) => debt.total_debt > 0).length;
+  const totalPages = Math.max(1, Math.ceil(filteredDebts.length / PAGE_SIZE));
+  const paginatedDebts = filteredDebts.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  const renderPagination = () => {
+    if (filteredDebts.length === 0) return null;
+
+    const startItem = (currentPage - 1) * PAGE_SIZE + 1;
+    const endItem = Math.min(currentPage * PAGE_SIZE, filteredDebts.length);
+
+    return (
+      <div className="mt-4 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground">
+          Mostrando {startItem}-{endItem} de {filteredDebts.length} estudiantes
+        </p>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="mr-1 h-4 w-4" />
+            Anterior
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            Página {currentPage} de {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+            disabled={currentPage >= totalPages}
+          >
+            Siguiente
+            <ChevronRight className="ml-1 h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -231,9 +285,9 @@ export const DebtManagement = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas las fechas</SelectItem>
-                <SelectItem value="this_year">Este aÃ±o</SelectItem>
-                <SelectItem value="last_year">AÃ±o pasado</SelectItem>
-                <SelectItem value="older">MÃ¡s antiguos</SelectItem>
+                <SelectItem value="this_year">Este año</SelectItem>
+                <SelectItem value="last_year">Año pasado</SelectItem>
+                <SelectItem value="older">Mas antiguos</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -255,74 +309,77 @@ export const DebtManagement = () => {
               <p className="mt-2 text-muted-foreground">Cargando deudas...</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="min-w-[150px]">Estudiante</TableHead>
-                    <TableHead className="min-w-[120px]">IdentificaciÃ³n</TableHead>
-                    <TableHead className="min-w-[100px]">Grado</TableHead>
-                    <TableHead className="min-w-[120px]">Fecha Ingreso</TableHead>
-                    <TableHead className="min-w-[140px]">Conceptos Pendientes</TableHead>
-                    <TableHead className="min-w-[120px]">Deuda Total</TableHead>
-                    <TableHead className="min-w-[120px]">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-              <TableBody>
-                {filteredDebts.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground">
-                      No se encontraron deudas con los filtros aplicados
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredDebts.map((debt) => (
-                    <TableRow key={debt.student_id}>
-                      <TableCell className="font-medium">{debt.student_name}</TableCell>
-                      <TableCell>{debt.identification || "N/A"}</TableCell>
-                      <TableCell>
-                        {debt.grade_name ? (
-                          <Badge variant="outline">{debt.grade_name}</Badge>
-                        ) : (
-                          <span className="text-muted-foreground">Sin grado</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {formatDatePY(debt.enrollment_date)}
-                      </TableCell>
-                      <TableCell>
-                        {debt.pending_debts_count > 0 ? (
-                          <Badge variant="secondary">{debt.pending_debts_count}</Badge>
-                        ) : (
-                          <span className="text-muted-foreground">0</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {debt.total_debt > 0 ? (
-                          <span className="font-bold text-warning">
-                            {debt.total_debt.toLocaleString("es-PY", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} Gs
-                          </span>
-                        ) : (
-                          <span className="text-success font-medium">0 Gs</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleViewDetails(debt.student_id)}
-                          disabled={debt.total_debt === 0}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          Ver Detalle
-                        </Button>
-                      </TableCell>
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="min-w-[150px]">Estudiante</TableHead>
+                      <TableHead className="min-w-[120px]">IdentificaciÃ³n</TableHead>
+                      <TableHead className="min-w-[100px]">Grado</TableHead>
+                      <TableHead className="min-w-[120px]">Fecha Ingreso</TableHead>
+                      <TableHead className="min-w-[140px]">Conceptos Pendientes</TableHead>
+                      <TableHead className="min-w-[120px]">Deuda Total</TableHead>
+                      <TableHead className="min-w-[120px]">Acciones</TableHead>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedDebts.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center text-muted-foreground">
+                          No se encontraron deudas con los filtros aplicados
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      <>
+                        {paginatedDebts.map((debt) => (
+                          <TableRow key={debt.student_id}>
+                            <TableCell className="font-medium">{debt.student_name}</TableCell>
+                            <TableCell>{debt.identification || "N/A"}</TableCell>
+                            <TableCell>
+                              {debt.grade_name ? (
+                                <Badge variant="outline">{debt.grade_name}</Badge>
+                              ) : (
+                                <span className="text-muted-foreground">Sin grado</span>
+                              )}
+                            </TableCell>
+                            <TableCell>{formatDatePY(debt.enrollment_date)}</TableCell>
+                            <TableCell>
+                              {debt.pending_debts_count > 0 ? (
+                                <Badge variant="secondary">{debt.pending_debts_count}</Badge>
+                              ) : (
+                                <span className="text-muted-foreground">0</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {debt.total_debt > 0 ? (
+                                <span className="font-bold text-warning">
+                                  {debt.total_debt.toLocaleString("es-PY", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} Gs
+                                </span>
+                              ) : (
+                                <span className="text-success font-medium">0 Gs</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleViewDetails(debt.student_id)}
+                                disabled={debt.total_debt === 0}
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                Ver Detalle
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+              {renderPagination()}
+            </>
           )}
         </CardContent>
       </Card>

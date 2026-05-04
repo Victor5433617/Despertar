@@ -12,10 +12,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Edit, Trash2, Users } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Users, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { StudentDialog } from "./StudentDialog";
 import { GuardianManagement } from "./GuardianManagement";
+
+const PAGE_SIZE = 10;
 
 interface Student {
   id: string;
@@ -33,6 +35,7 @@ export const StudentsManagement = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,6 +49,17 @@ export const StudentsManagement = () => {
   useEffect(() => {
     filterStudents();
   }, [searchTerm, students]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(filteredStudents.length / PAGE_SIZE));
+    if (currentPage > maxPage) {
+      setCurrentPage(maxPage);
+    }
+  }, [filteredStudents.length, currentPage]);
 
   const loadStudents = async () => {
     try {
@@ -80,6 +94,47 @@ export const StudentsManagement = () => {
         student.guardian_name?.toLowerCase().includes(term)
     );
     setFilteredStudents(filtered);
+  };
+
+  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / PAGE_SIZE));
+  const paginatedStudents = filteredStudents.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  const renderPagination = () => {
+    if (filteredStudents.length === 0) return null;
+
+    const startItem = (currentPage - 1) * PAGE_SIZE + 1;
+    const endItem = Math.min(currentPage * PAGE_SIZE, filteredStudents.length);
+
+    return (
+      <div className="mt-4 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground">
+          Mostrando {startItem}-{endItem} de {filteredStudents.length} estudiantes
+        </p>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="mr-1 h-4 w-4" />
+            Anterior
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            Página {currentPage} de {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+            disabled={currentPage >= totalPages}
+          >
+            Siguiente
+            <ChevronRight className="ml-1 h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    );
   };
 
   const handleDelete = async (id: string) => {
@@ -160,14 +215,14 @@ export const StudentsManagement = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredStudents.length === 0 ? (
+                    {paginatedStudents.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center text-muted-foreground">
                       No se encontraron estudiantes
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredStudents.map((student) => (
+                      paginatedStudents.map((student) => (
                     <TableRow key={student.id}>
                       <TableCell className="font-medium">
                         {student.first_name} {student.last_name}
@@ -230,6 +285,7 @@ export const StudentsManagement = () => {
         studentId={studentForGuardians?.id || ''}
         studentName={studentForGuardians ? `${studentForGuardians.first_name} ${studentForGuardians.last_name}` : ''}
       />
+        {renderPagination()}
     </div>
   );
 };

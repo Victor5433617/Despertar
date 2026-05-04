@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, DollarSign, Receipt, Printer, XCircle } from "lucide-react";
+import { Plus, Search, DollarSign, Receipt, Printer, XCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { PaymentDialog } from "./PaymentDialog";
 import { PaymentReceipt } from "./PaymentReceipt";
@@ -52,12 +52,16 @@ interface Payment {
   status: string;
 }
 
+const PAGE_SIZE = 10;
+
 export const PaymentsManagement = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [recentPayments, setRecentPayments] = useState<Payment[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [paymentSearchTerm, setPaymentSearchTerm] = useState("");
+  const [studentsPage, setStudentsPage] = useState(1);
+  const [paymentsPage, setPaymentsPage] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -74,6 +78,21 @@ export const PaymentsManagement = () => {
   useEffect(() => {
     filterStudents();
   }, [searchTerm, students]);
+
+  useEffect(() => {
+    setStudentsPage(1);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    setPaymentsPage(1);
+  }, [paymentSearchTerm]);
+
+  useEffect(() => {
+    const maxStudentsPage = Math.max(1, Math.ceil(filteredStudents.length / PAGE_SIZE));
+    if (studentsPage > maxStudentsPage) {
+      setStudentsPage(maxStudentsPage);
+    }
+  }, [filteredStudents.length, studentsPage]);
 
   const loadData = async () => {
     try {
@@ -189,6 +208,62 @@ export const PaymentsManagement = () => {
         payment.student_name.toLowerCase().includes(paymentSearchTerm.toLowerCase())
       )
     : recentPayments;
+
+  useEffect(() => {
+    const maxPaymentsPage = Math.max(1, Math.ceil(filteredRecentPayments.length / PAGE_SIZE));
+    if (paymentsPage > maxPaymentsPage) {
+      setPaymentsPage(maxPaymentsPage);
+    }
+  }, [filteredRecentPayments.length, paymentsPage]);
+
+  const paginatedStudents = filteredStudents.slice((studentsPage - 1) * PAGE_SIZE, studentsPage * PAGE_SIZE);
+  const paginatedPayments = filteredRecentPayments.slice((paymentsPage - 1) * PAGE_SIZE, paymentsPage * PAGE_SIZE);
+
+  const renderPagination = (
+    page: number,
+    totalItems: number,
+    setPage: (value: number | ((value: number) => number)) => void,
+    label: string
+  ) => {
+    const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+    const startItem = totalItems === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+    const endItem = Math.min(page * PAGE_SIZE, totalItems);
+
+    if (totalItems === 0) {
+      return null;
+    }
+
+    return (
+      <div className="mt-4 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground">
+          Mostrando {startItem}-{endItem} de {totalItems} {label}
+        </p>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
+            disabled={page === 1}
+          >
+            <ChevronLeft className="mr-1 h-4 w-4" />
+            Anterior
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            Página {page} de {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+            disabled={page >= totalPages}
+          >
+            Siguiente
+            <ChevronRight className="ml-1 h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    );
+  };
 
   const filterStudents = () => {
     if (!searchTerm) {
@@ -426,6 +501,7 @@ export const PaymentsManagement = () => {
                 <p className="mt-2 text-muted-foreground">Cargando estudiantes...</p>
               </div>
             ) : (
+              <>
               <div className="border rounded-lg overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -439,7 +515,7 @@ export const PaymentsManagement = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredStudents.length === 0 ? (
+                    {paginatedStudents.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center text-muted-foreground">
                           {searchTerm
@@ -448,12 +524,12 @@ export const PaymentsManagement = () => {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredStudents.map((student) => (
+                      paginatedStudents.map((student) => (
                         <TableRow key={student.id}>
                           <TableCell className="font-medium">
                             {student.first_name} {student.last_name}
                           </TableCell>
-                          <TableCell>{student.identification || "N/A"}</TableCell>
+                          <TableCell>{student.identification || "Sin identificación"}</TableCell>
                           <TableCell>
                             {student.grade_name ? (
                               <Badge variant="outline">{student.grade_name}</Badge>
@@ -497,6 +573,8 @@ export const PaymentsManagement = () => {
                   </TableBody>
                 </Table>
               </div>
+              {renderPagination(studentsPage, filteredStudents.length, setStudentsPage, "estudiantes")}
+              </>
             )}
           </div>
         </CardContent>
@@ -522,7 +600,7 @@ export const PaymentsManagement = () => {
           </div>
         </CardHeader>
         <CardContent>
-          {filteredRecentPayments.length === 0 ? (
+          {paginatedPayments.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               {paymentSearchTerm
                 ? "No se encontraron pagos para ese estudiante"
@@ -542,7 +620,7 @@ export const PaymentsManagement = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredRecentPayments.map((payment) => (
+                  {paginatedPayments.map((payment) => (
                     <TableRow key={payment.id}>
                       <TableCell>{formatDatePY(payment.payment_date)}</TableCell>
                       <TableCell className="font-medium">{payment.student_name}</TableCell>
@@ -593,6 +671,7 @@ export const PaymentsManagement = () => {
               </Table>
             </div>
           )}
+          {renderPagination(paymentsPage, filteredRecentPayments.length, setPaymentsPage, "pagos")}
         </CardContent>
       </Card>
 
