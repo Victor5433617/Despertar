@@ -50,7 +50,7 @@ export const PaymentReceipt = ({ data, onClose }) => {
       <div className="flex justify-between gap-2">
         <div className="min-w-0">
           <div className="text-[11px] text-black/70 print:text-[9px]">Recibo</div>
-          <div className="font-semibold truncate">{data.receiptNumber}</div>
+          <div className="font-semibold truncate">{data.receiptNumber }</div>
         </div>
         <div className="text-right">
           <div className="text-[11px] text-black/70 print:text-[9px]">Fecha</div>

@@ -158,7 +158,7 @@ export const DebtDetailsDialog = ({ open, onClose, studentId, onDebtUpdated }: D
       case "partial":
         return <Badge variant="secondary">Parcial</Badge>;
       case "paid":
-        return <Badge variant="default">Pagado</Badge>;
+        return <Badge className="bg-green-500 hover:bg-green-600 text-white">Pagado</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -216,7 +216,7 @@ export const DebtDetailsDialog = ({ open, onClose, studentId, onDebtUpdated }: D
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+      <DialogContent className="w-[98vw] max-w-6xl max-h-[95vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="text-lg sm:text-xl">Detalle de Deudas</DialogTitle>
         </DialogHeader>
@@ -312,16 +312,16 @@ export const DebtDetailsDialog = ({ open, onClose, studentId, onDebtUpdated }: D
                   </CardContent>
                 </Card>
               ) : (
-                <div className="border rounded-lg overflow-x-auto">
+                <div className="border rounded-lg">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="min-w-[150px]">Concepto</TableHead>
-                        <TableHead className="min-w-[130px]">Fecha Vencimiento</TableHead>
-                        <TableHead className="min-w-[100px]">Monto</TableHead>
-                        <TableHead className="min-w-[90px]">Estado</TableHead>
-                        <TableHead className="min-w-[120px]">Notas</TableHead>
-                        <TableHead className="min-w-[100px]">Acciones</TableHead>
+                        <TableHead className="w-[35%]">Concepto</TableHead>
+                        <TableHead className="w-[15%]">Vencimiento</TableHead>
+                        <TableHead className="w-[15%]">Monto</TableHead>
+                        <TableHead className="w-[10%]">Estado</TableHead>
+                        <TableHead className="w-[15%]">Notas</TableHead>
+                        <TableHead className="w-[10%]">Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -331,14 +331,7 @@ export const DebtDetailsDialog = ({ open, onClose, studentId, onDebtUpdated }: D
                           className={isOverdue(debt.due_date) ? "bg-destructive/5" : ""}
                         >
                           <TableCell>
-                            <div>
-                              <p className="font-medium">{debt.concept_name}</p>
-                              {debt.concept_description && (
-                                <p className="text-xs text-muted-foreground">
-                                  {debt.concept_description}
-                                </p>
-                              )}
-                            </div>
+                            <p className="font-medium">{debt.concept_name}</p>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
@@ -371,10 +364,10 @@ export const DebtDetailsDialog = ({ open, onClose, studentId, onDebtUpdated }: D
                                 variant="outline"
                                 size="sm"
                                 onClick={() => openLateFeeDialog(debt)}
-                                className="text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
+                                className="text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground whitespace-nowrap"
                               >
-                                <AlertTriangle className="h-4 w-4 mr-1" />
-                                Aplicar Mora
+                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                Mora
                               </Button>
                             )}
                           </TableCell>

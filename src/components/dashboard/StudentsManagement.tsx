@@ -227,9 +227,9 @@ export const StudentsManagement = () => {
                       <TableCell className="font-medium">
                         {student.first_name} {student.last_name}
                       </TableCell>
-                       <TableCell>{student.identification || "N/A"}</TableCell>
+                       <TableCell>{student.identification || "Sin asignar"}</TableCell>
                        <TableCell>{student.grade || "Sin asignar"}</TableCell>
-                       <TableCell>{student.guardian_name || "N/A"}</TableCell>
+                       <TableCell>{student.guardian_name || "Sin asignar"}</TableCell>
                       <TableCell>
                         <Badge variant={student.is_active ? "default" : "secondary"}>
                           {student.is_active ? "Activo" : "Inactivo"}

@@ -13,10 +13,11 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Search, History, XCircle, Printer, Receipt, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, History, XCircle, Printer, Receipt, ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { toast } from "sonner";
 import { formatDatePY, getTodayDateString } from "@/lib/dateUtils";
 import { PaymentReceipt } from "./PaymentReceipt";
+import { StudentPaymentHistoryDialog } from "./StudentPaymentHistoryDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Payment {
@@ -72,6 +73,11 @@ export const PaymentHistoryManagement = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptData, setReceiptData] = useState<any>(null);
+
+  // Por alumno
+  const [studentHistoryOpen, setStudentHistoryOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<{ id: string; name: string; identification: string | null } | null>(null);
+  const [studentSearch, setStudentSearch] = useState("");
 
   // Date range filters - default last 30 days
   const today = getTodayDateString();
@@ -334,6 +340,27 @@ export const PaymentHistoryManagement = () => {
   const totalActive = filteredActivePayments.reduce((sum, p) => sum + p.amount, 0);
   const totalCancelled = filteredCancelledPayments.reduce((sum, p) => sum + p.amount, 0);
 
+  // Agrupar pagos activos por alumno
+  const studentMap = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; identification: string | null; total: number; count: number; lastDate: string }>();
+    activePayments.forEach((p) => {
+      if (!map.has(p.student_id)) {
+        map.set(p.student_id, { id: p.student_id, name: p.student_name, identification: p.student_identification, total: 0, count: 0, lastDate: p.payment_date });
+      }
+      const entry = map.get(p.student_id)!;
+      entry.total += p.amount;
+      entry.count += 1;
+      if (p.payment_date > entry.lastDate) entry.lastDate = p.payment_date;
+    });
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [activePayments]);
+
+  const filteredStudents = useMemo(() => {
+    const term = studentSearch.trim().toLowerCase();
+    if (!term) return studentMap;
+    return studentMap.filter((s) => s.name.toLowerCase().includes(term) || s.identification?.toLowerCase().includes(term));
+  }, [studentMap, studentSearch]);
+
   if (isLoading) {
     return (
       <div className="space-y-4 sm:space-y-6">
@@ -430,17 +457,87 @@ export const PaymentHistoryManagement = () => {
         </Card>
       </div>
 
-      <Tabs defaultValue="active" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+      <Tabs defaultValue="students" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="students" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Por Alumno
+          </TabsTrigger>
           <TabsTrigger value="active" className="flex items-center gap-2">
             <History className="h-4 w-4" />
             Pagos Activos
           </TabsTrigger>
           <TabsTrigger value="cancelled" className="flex items-center gap-2">
             <XCircle className="h-4 w-4" />
-            Pagos Anulados
+            Anulados
           </TabsTrigger>
         </TabsList>
+
+        {/* Por Alumno Tab */}
+        <TabsContent value="students">
+          <Card>
+            <CardHeader>
+              <CardTitle>Historial por Alumno</CardTitle>
+              <CardDescription>Seleccioná un alumno para ver todos sus pagos</CardDescription>
+              <div className="relative mt-2">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  placeholder="Buscar alumno..."
+                  value={studentSearch}
+                  onChange={(e) => setStudentSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </CardHeader>
+            <CardContent>
+              {filteredStudents.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">No se encontraron alumnos</div>
+              ) : (
+                <div className="border rounded-lg">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Alumno</TableHead>
+                        <TableHead>Identificación</TableHead>
+                        <TableHead>Pagos</TableHead>
+                        <TableHead>Total Pagado</TableHead>
+                        <TableHead>Último Pago</TableHead>
+                        <TableHead>Acción</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredStudents.map((student) => (
+                        <TableRow key={student.id}>
+                          <TableCell className="font-medium">{student.name}</TableCell>
+                          <TableCell>{student.identification || <span className="text-muted-foreground">N/A</span>}</TableCell>
+                          <TableCell>{student.count}</TableCell>
+                          <TableCell>
+                            <span className="font-bold text-success">
+                              {student.total.toLocaleString("es-PY")} Gs.
+                            </span>
+                          </TableCell>
+                          <TableCell>{formatDatePY(student.lastDate)}</TableCell>
+                          <TableCell>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedStudent({ id: student.id, name: student.name, identification: student.identification });
+                                setStudentHistoryOpen(true);
+                              }}
+                            >
+                              Ver Detalles
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         {/* Active Payments Tab */}
         <TabsContent value="active">
@@ -682,6 +779,14 @@ export const PaymentHistoryManagement = () => {
       {showReceipt && receiptData && (
         <PaymentReceipt data={receiptData} onClose={() => setShowReceipt(false)} />
       )}
+
+      <StudentPaymentHistoryDialog
+        open={studentHistoryOpen}
+        onClose={() => { setStudentHistoryOpen(false); setSelectedStudent(null); }}
+        studentId={selectedStudent?.id ?? null}
+        studentName={selectedStudent?.name ?? ""}
+        studentIdentification={selectedStudent?.identification ?? null}
+      />
     </div>
   );
 };
