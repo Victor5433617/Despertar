@@ -13,7 +13,10 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  AreaChart,
+  Area,
 } from "recharts";
+import { TrendingUp, TrendingDown } from "lucide-react";
 
 const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
@@ -28,6 +31,7 @@ interface UpcomingDebt {
 export const DashboardHome = () => {
   const [stats, setStats] = useState({ totalStudents: 0, activeStudents: 0 });
   const [pagosPorMes, setPagosPorMes] = useState<{ mes: string; total: number }[]>([]);
+  const [studentsTrend, setStudentsTrend] = useState<{ mes: string; total: number; active: number }[]>([]);
   const [upcomingDebts, setUpcomingDebts] = useState<UpcomingDebt[]>([]);
   const [debtsPage, setDebtsPage] = useState(0);
   const DEBTS_PAGE_SIZE = 5;
@@ -36,6 +40,7 @@ export const DashboardHome = () => {
     loadStats();
     loadPagosPorMes();
     loadUpcomingDebts();
+    loadStudentsTrend();
   }, []);
 
   const loadStats = async () => {
@@ -45,6 +50,30 @@ export const DashboardHome = () => {
       setStats({ totalStudents: studentsRes.count || 0, activeStudents: activeCount });
     } catch (error) {
       console.error("Error loading stats:", error);
+    }
+  };
+
+  const loadStudentsTrend = async () => {
+    try {
+      const now = new Date();
+      const { data } = await supabase.from("students").select("created_at, is_active");
+
+      const meses: { key: string; mes: string; end: Date }[] = [];
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+        meses.push({ key: `${d.getFullYear()}-${d.getMonth()}`, mes: MESES[d.getMonth()], end });
+      }
+
+      const resultado = meses.map(({ mes, end }) => {
+        const total = (data || []).filter((s) => new Date(s.created_at) < end).length;
+        const active = (data || []).filter((s) => s.is_active && new Date(s.created_at) < end).length;
+        return { mes, total, active };
+      });
+
+      setStudentsTrend(resultado);
+    } catch (error) {
+      console.error("Error loading students trend:", error);
     }
   };
 
@@ -129,57 +158,117 @@ export const DashboardHome = () => {
     }
   };
 
+  const getChangePct = (dataKey: "total" | "active") => {
+    if (studentsTrend.length < 2) return 0;
+    const prev = studentsTrend[studentsTrend.length - 2][dataKey];
+    const curr = studentsTrend[studentsTrend.length - 1][dataKey];
+    if (prev === 0) return curr > 0 ? 100 : 0;
+    return ((curr - prev) / prev) * 100;
+  };
+
   const statCards = [
-    { title: "Total Estudiantes", value: stats.totalStudents, icon: Users, color: "text-primary", bgColor: "bg-primary/10" },
-    { title: "Estudiantes Activos", value: stats.activeStudents, icon: Users, color: "text-success", bgColor: "bg-success/10" },
+    {
+      title: "Total Estudiantes",
+      value: stats.totalStudents,
+      icon: Users,
+      color: "text-primary",
+      bgColor: "bg-primary/10",
+      chartColor: "hsl(var(--primary))",
+      dataKey: "total" as const,
+    },
+    {
+      title: "Estudiantes Activos",
+      value: stats.activeStudents,
+      icon: Users,
+      color: "text-success",
+      bgColor: "bg-success/10",
+      chartColor: "hsl(var(--success))",
+      dataKey: "active" as const,
+    },
   ];
 
   return (
     <div className="space-y-6 sm:space-y-8">
       <div>
-        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Panel de Control</h2>
+        <h3 className="text-2xl sm:text-3xl font-bold tracking-tight">Panel de Control</h3>
         <p className="text-sm sm:text-base text-muted-foreground">
           Resumen general del sistema de gestión escolar
         </p>
       </div>
 
-      {/* Tarjetas de estadísticas */}
-      <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {statCards.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <Card key={stat.title} className="shadow-sm hover:shadow-md transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
-                <div className={`p-2 rounded-full ${stat.bgColor}`}>
-                  <Icon className={`h-4 w-4 ${stat.color}`} />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {/* Gráfico */}
+      {/* Resumen: pagos + estudiantes en un solo card */}
       <Card className="shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-base">Pagos por Mes (últimos 6 meses)</CardTitle>
-        </CardHeader>
-        <CardContent className="flex justify-center">
-          <ResponsiveContainer width="50%" height={400}>
-            <BarChart data={pagosPorMes} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis dataKey="mes" tick={{ fontSize: 12 }} />
-              <YAxis hide />
-              <Tooltip
-                formatter={(value: number) => [`Gs. ${value.toLocaleString("es-PY")}`, "Total cobrado"]}
-              />
-              <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+        <CardContent className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-6">
+          {/* Gráfico de pagos */}
+          <div className="lg:col-span-2">
+            <h3 className="text-base font-semibold mb-2">Pagos por Mes (últimos 6 meses)</h3>
+            <ResponsiveContainer width="75%" height={320}>
+              <BarChart data={pagosPorMes} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis dataKey="mes" tick={{ fontSize: 12 }} />
+                <YAxis hide />
+                <Tooltip
+                  formatter={(value: number) => [`Gs. ${value.toLocaleString("es-PY")}`, "Total cobrado"]}
+                />
+                <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Estudiantes: total y activos, apilados */}
+          <div className="flex flex-col gap-4 justify-center">
+            {statCards.map((stat) => {
+              const Icon = stat.icon;
+              const changePct = getChangePct(stat.dataKey);
+              const isPositive = changePct >= 0;
+              return (
+                <div key={stat.title} className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-muted-foreground">{stat.title}</span>
+                    <div className={`p-2 rounded-full ${stat.bgColor}`}>
+                      <Icon className={`h-4 w-4 ${stat.color}`} />
+                    </div>
+                  </div>
+                  <div className="flex items-end justify-between gap-2">
+                    <div>
+                      <div className="text-2xl font-bold">{stat.value}</div>
+                      {studentsTrend.length > 1 && (
+                        <div className={`flex items-center gap-1 text-xs mt-1 ${isPositive ? "text-success" : "text-destructive"}`}>
+                          {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                          {isPositive ? "+" : ""}
+                          {changePct.toFixed(1)}% vs mes anterior
+                        </div>
+                      )}
+                    </div>
+                    <div className="w-20 h-10 shrink-0">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={studentsTrend} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id={`gradient-${stat.dataKey}`} x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor={stat.chartColor} stopOpacity={0.4} />
+                              <stop offset="100%" stopColor={stat.chartColor} stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <Tooltip
+                            contentStyle={{ fontSize: 12 }}
+                            formatter={(value: number) => [value, stat.title]}
+                            labelFormatter={(label) => label}
+                          />
+                          <Area
+                            type="monotone"
+                            dataKey={stat.dataKey}
+                            stroke={stat.chartColor}
+                            strokeWidth={2}
+                            fill={`url(#gradient-${stat.dataKey})`}
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </CardContent>
       </Card>
 
