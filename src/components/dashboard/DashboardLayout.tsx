@@ -13,12 +13,10 @@ import {
   ClipboardList,
   UserCog,
   History,
-  Sun,
-  Moon,
 } from "lucide-react";
 import schoolLogo from "@/assets/school-logo.png";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -30,20 +28,6 @@ interface DashboardLayoutProps {
 
 export const DashboardLayout = ({ children, currentView, onViewChange, user, userRole }: DashboardLayoutProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isDark, setIsDark] = useState(() => {
-    return localStorage.getItem("theme") === "dark" ||
-      (!localStorage.getItem("theme") && window.matchMedia("(prefers-color-scheme: dark)").matches);
-  });
-
-  useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
-  }, [isDark]);
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut({ scope: 'local' });
@@ -115,14 +99,6 @@ export const DashboardLayout = ({ children, currentView, onViewChange, user, use
           <p className="text-xs text-sidebar-accent-foreground/70">Usuario</p>
           <p className="text-sm font-medium truncate">{user.email}</p>
         </div>
-        <Button
-          variant="ghost"
-          className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground mb-1"
-          onClick={() => setIsDark(!isDark)}
-        >
-          {isDark ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
-          {isDark ? "Modo Claro" : "Modo Oscuro"}
-        </Button>
         <Button
           variant="ghost"
           className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"

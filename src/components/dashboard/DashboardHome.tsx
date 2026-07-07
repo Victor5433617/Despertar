@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, Bell } from "lucide-react";
+import { Users, Bell, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatDatePY } from "@/lib/dateUtils";
 import {
   BarChart,
@@ -28,6 +29,8 @@ export const DashboardHome = () => {
   const [stats, setStats] = useState({ totalStudents: 0, activeStudents: 0 });
   const [pagosPorMes, setPagosPorMes] = useState<{ mes: string; total: number }[]>([]);
   const [upcomingDebts, setUpcomingDebts] = useState<UpcomingDebt[]>([]);
+  const [debtsPage, setDebtsPage] = useState(0);
+  const DEBTS_PAGE_SIZE = 5;
 
   useEffect(() => {
     loadStats();
@@ -120,6 +123,7 @@ export const DashboardHome = () => {
       });
 
       setUpcomingDebts(list);
+      setDebtsPage(0);
     } catch (error) {
       console.error("Error loading upcoming debts:", error);
     }
@@ -201,27 +205,62 @@ export const DashboardHome = () => {
               No hay cuotas que venzan en los próximos 7 días
             </p>
           ) : (
-            <div className="divide-y">
-              {upcomingDebts.map((d, i) => (
-                <div key={i} className="flex items-center justify-between py-3 gap-4">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-sm truncate">{d.studentName}</p>
-                    <p className="text-xs text-muted-foreground truncate">{d.conceptName}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm font-bold text-warning">
-                      {d.amount.toLocaleString("es-PY")} Gs.
-                    </p>
-                    <div className="flex items-center gap-2 justify-end mt-0.5">
-                      <span className="text-xs text-muted-foreground">{formatDatePY(d.dueDate)}</span>
-                      <Badge variant={d.daysLeft === 0 ? "destructive" : "secondary"} className="text-xs">
-                        {d.daysLeft === 0 ? "Hoy" : `en ${d.daysLeft}d`}
-                      </Badge>
+            <>
+              <div className="divide-y">
+                {upcomingDebts
+                  .slice(debtsPage * DEBTS_PAGE_SIZE, debtsPage * DEBTS_PAGE_SIZE + DEBTS_PAGE_SIZE)
+                  .map((d, i) => (
+                    <div key={i} className="flex items-center justify-between py-3 gap-4">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-sm truncate">{d.studentName}</p>
+                        <p className="text-xs text-muted-foreground truncate">{d.conceptName}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-bold text-warning">
+                          {d.amount.toLocaleString("es-PY")} Gs.
+                        </p>
+                        <div className="flex items-center gap-2 justify-end mt-0.5">
+                          <span className="text-xs text-muted-foreground">{formatDatePY(d.dueDate)}</span>
+                          <Badge variant={d.daysLeft === 0 ? "destructive" : "secondary"} className="text-xs">
+                            {d.daysLeft === 0 ? "Hoy" : `en ${d.daysLeft}d`}
+                          </Badge>
+                        </div>
+                      </div>
                     </div>
+                  ))}
+              </div>
+              {upcomingDebts.length > DEBTS_PAGE_SIZE && (
+                <div className="flex items-center justify-between pt-4">
+                  <span className="text-xs text-muted-foreground">
+                    Página {debtsPage + 1} de {Math.ceil(upcomingDebts.length / DEBTS_PAGE_SIZE)}
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={debtsPage === 0}
+                      onClick={() => setDebtsPage((p) => Math.max(0, p - 1))}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Anterior
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={debtsPage >= Math.ceil(upcomingDebts.length / DEBTS_PAGE_SIZE) - 1}
+                      onClick={() =>
+                        setDebtsPage((p) =>
+                          Math.min(Math.ceil(upcomingDebts.length / DEBTS_PAGE_SIZE) - 1, p + 1)
+                        )
+                      }
+                    >
+                      Siguiente
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
