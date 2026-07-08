@@ -115,7 +115,7 @@ export const DashboardLayout = ({ children, currentView, onViewChange, user, use
     <div className="min-h-screen bg-background flex">
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-sidebar border-b border-sidebar-border p-4 flex items-center justify-between">
-        <h2 className="text-lg font-bold text-sidebar-foreground">Sistema Escolar</h2>
+        <h3 className="text-lg font-bold text-sidebar-foreground">Sistema Escolar</h3>
         <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="text-sidebar-foreground">
